@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <!-- Fondo Transparente implícito al no haber un rect de fondo completo -->
+  
+  <defs>
+    <!-- Degradados para la pelota de tenis -->
+    <radialGradient id="ballShade" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#d4f043" />
+      <stop offset="70%" stop-color="#b4d61c" />
+      <stop offset="100%" stop-color="#8ba80e" />
+    </radialGradient>
+  </defs>
+
+  <!-- Círculo base de la pelota de tenis -->
+  <circle cx="200" cy="200" r="150" fill="url(#ballShade)" />
+
+  <!-- Líneas curvas características de la pelota de tenis (Gajos/Líneas blancas) -->
+  <path d="M 90 100 Q 200 180 310 100" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity="0.85" />
+  <path d="M 90 300 Q 200 220 310 300" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity="0.85" />
+
+  <!-- Detalles de texturas/cortes dinámicos de estilo deportivo -->
+  <path d="M 80 180 L 120 120 M 280 280 L 320 220" fill="none" stroke="#ffffff" stroke-width="4" opacity="0.5" />
+
+  <!-- Siglas MP - Estilo Moderno, Itálico, Deportivo e Impactante -->
+  <!-- Azul Oscuro (#0f2c59) -->
+  <g fill="#0f2c59" stroke="#ffffff" stroke-width="4" stroke-linejoin="round">
+    <path d="M 60 250 L 105 150 L 135 150 L 155 205 L 175 150 L 205 150 L 250 250 L 220 250 L 190 180 L 165 240 L 145 240 L 120 180 L 90 250 Z" />
+    <path d="M 235 250 L 255 150 L 310 150 C 335 150 345 162 340 185 C 335 208 315 220 290 220 L 270 220 L 263 250 Z M 276 195 L 290 195 C 305 195 315 190 318 178 C 321 166 315 168 300 168 L 282 168 Z" />
+    
+    <!-- El corte afilado/rayo inferior que cruza hacia abajo en la P -->
+    <path d="M 270 220 L 245 330 L 260 330 L 280 235 Z" fill="#0f2c59" stroke="#ffffff" stroke-width="3" />
+  </g>
+</svg>
