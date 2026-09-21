@@ -15,6 +15,7 @@ import AdminFechas from './pages/admin/AdminFechas'
 import AdminEquipos from './pages/admin/AdminEquipos'
 import AdminTorneos from './pages/admin/AdminTorneos'
 import AdminOrganizaciones from './pages/admin/AdminOrganizaciones'
+import AdminAnalisisDeportivo from './pages/admin/AdminAnalisisDeportivo'
 import { getOrganizationBySlug } from './api/organizations.api'
 import { isSystemPath } from './hooks/useTenant'
 
@@ -114,11 +115,13 @@ export default function App() {
         <Route path="mis-fechas" element={<MisFechas />} />
         <Route path="resultados" element={<Resultados />} />
         <Route path="estadisticas" element={<Estadisticas />} />
+        <Route path="analisis-deportivo" element={<ProtectedRoute><AdminAnalisisDeportivo ownMode /></ProtectedRoute>} />
         <Route path="admin/usuarios" element={<AdminRoute><AdminUsuarios /></AdminRoute>} />
         <Route path="admin/importar_usuarios" element={<AdminRoute><AdminImportarUsuarios /></AdminRoute>} />
         <Route path="admin/fechas" element={<AdminRoute><AdminFechas /></AdminRoute>} />
         <Route path="admin/equipos" element={<AdminRoute><AdminEquipos /></AdminRoute>} />
         <Route path="admin/torneos" element={<AdminRoute><AdminTorneos /></AdminRoute>} />
+        <Route path="admin/analisis-deportivo" element={<AdminRoute><AdminAnalisisDeportivo /></AdminRoute>} />
       </Route>
       <Route path="*" element={<CatchAll />} />
     </Routes>

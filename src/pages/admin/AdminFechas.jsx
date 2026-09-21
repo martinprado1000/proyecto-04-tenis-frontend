@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Sparkles, Pencil, CalendarClock, Save } from 'lucide-react'
+import { Sparkles, Pencil, CalendarClock, CalendarDays, ChevronDown, ChevronUp, Save } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card'
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/Table'
@@ -53,6 +53,7 @@ export default function AdminFechas() {
   const [savingFecha, setSavingFecha] = useState(null)
   const [rondaPdf, setRondaPdf] = useState({})
   const [rondaFechaSeleccionada, setRondaFechaSeleccionada] = useState({})
+  const [fechasAbiertas, setFechasAbiertas] = useState({})
   const [organization, setOrganization] = useState(null)
   const { tenantSlug, isSystem } = useTenant()
   const modalForm = useForm({
@@ -162,6 +163,13 @@ export default function AdminFechas() {
   function cerrarModal() {
     setModal(null)
     setModalError('')
+  }
+
+  function toggleFechas(torneoId) {
+    setFechasAbiertas((prev) => ({
+      ...prev,
+      [torneoId]: !Boolean(prev[torneoId]),
+    }))
   }
 
   async function guardar(data) {
@@ -326,83 +334,116 @@ export default function AdminFechas() {
                   {t.fechas && t.fechas.length > 0 ? (() => {
                     const maxRound = (t.fechas || []).reduce((mx, ff) => Math.max(mx, ff.round || 1), 0)
                     const rounds = [...new Set((t.fechas || []).map((ff) => ff.round || 1))].sort((a, b) => a - b)
+                    const fechasAbiertasParaTorneo = Boolean(fechasAbiertas[t.id])
                     return (
                       <>
-                        <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3 shadow-sm">
-                          <span className="w-full text-xs font-semibold uppercase tracking-wide text-primary/80">Asignar fecha límite por ronda</span>
-                          <label className="text-xs text-muted-foreground">Ronda
-                            <select className="mt-1 ml-1 h-8 rounded-lg border border-border bg-background px-2 text-xs" value={rondaFechaSeleccionada[t.id] || ''} onChange={(e) => setRondaFechaSeleccionada((prev) => ({ ...prev, [t.id]: e.target.value }))}>
-                              <option value="">Elegir ronda</option>
-                              {rounds.map((round) => <option key={round} value={round}>Ronda {round}</option>)}
-                            </select>
-                          </label>
-                          <label className="text-xs text-muted-foreground">
-                            <Input type="date" value={fechaRonda[`${t.id}-${rondaFechaSeleccionada[t.id]}`] || ''} onChange={(e) => setFechaRonda((prev) => ({ ...prev, [`${t.id}-${rondaFechaSeleccionada[t.id]}`]: e.target.value }))} className="mt-1 h-8" disabled={!rondaFechaSeleccionada[t.id]} />
-                          </label>
-                          <Button size="sm" variant="outline" disabled={!rondaFechaSeleccionada[t.id] || !fechaRonda[`${t.id}-${rondaFechaSeleccionada[t.id]}`] || savingFecha === `${t.id}-round-${rondaFechaSeleccionada[t.id]}`} onClick={() => aplicarFechaRonda(t.id, Number(rondaFechaSeleccionada[t.id]))}>
-                            <Save className="h-3.5 w-3.5" /> Aplicar
+                        <div className="mb-4 rounded-xl border border-border bg-muted/30 p-1.5 shadow-sm">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="h-auto w-full justify-between rounded-lg px-3 py-2.5 text-left hover:bg-background"
+                            onClick={() => toggleFechas(t.id)}
+                            aria-expanded={fechasAbiertasParaTorneo}
+                          >
+                            <span className="flex min-w-0 items-center gap-3">
+                              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${fechasAbiertasParaTorneo ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'}`}>
+                                <CalendarDays className="h-4 w-4" />
+                              </span>
+                              <span className="min-w-0">
+                                <span className="block text-sm font-semibold text-foreground">
+                                  {fechasAbiertasParaTorneo ? 'Ocultar fechas generadas' : 'Ver fechas generadas'}
+                                </span>
+                                <span className="block text-xs text-muted-foreground">
+                                  {t.fechas.length} {t.fechas.length === 1 ? 'partido programado' : 'partidos programados'}
+                                </span>
+                              </span>
+                            </span>
+                            <span className="ml-3 flex shrink-0 items-center gap-2 text-xs font-medium text-primary">
+                              {fechasAbiertasParaTorneo ? 'Ocultar' : 'Ver'}
+                              {fechasAbiertasParaTorneo ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
                           </Button>
                         </div>
-                        <Table>
-                        <THead>
-                          <TR>
-                            <TH>{t.formato?.includes('Dobles') ? 'Equipo 1' : 'Participante 1'}</TH>
-                            <TH>{t.formato?.includes('Dobles') ? 'Equipo 2' : 'Participante 2'}</TH>
-                            <TH>Instancia</TH>
-                            <TH>Fecha límite</TH>
-                            <TH>Resultado</TH>
-                            <TH className="text-right">Acción</TH>
-                          </TR>
-                        </THead>
-                        <TBody>
-                          {t.fechas.map((f, idx) => {
-                            const isPlayoffs = (t.formato || '').toLowerCase().includes('playoffs')
-                            const tieneAmbos = Boolean(f.participante1 && f.participante1.id && f.participante2 && f.participante2.id)
-                            const instancia = (() => {
-                              if (isPlayoffs) {
-                                if (f.thirdPlace) return 'Definición 3°'
-                                if (f.round === maxRound) return 'Final'
-                                if (f.round === (maxRound - 1)) return 'Semifinal'
-                              }
-                              return `Ronda ${f.round || 1}`
-                            })()
-                            const roundBg = (f.round || 1) % 2 === 0
-                              ? 'bg-white/[0.02]'
-                              : ''
-                            return (
-                              <TR key={f.id} className={roundBg}>
-                                <TD className="font-medium">
-                                  <span className={f.participante1?.cancelado ? 'line-through text-muted-foreground' : ''}>
-                                    {f.participante1 ? (f.participante1.nombre ? `${f.participante1.nombre} ${f.participante1.apellido || ''}` : f.participante1.name) : '—'}
-                                  </span>
-                                  {f.participante1?.cancelado && <span className="ml-2 text-xs font-normal text-destructive">Fecha cancelada</span>}
-                                  {f.reemplazado1 && !f.participante1?.cancelado && <span className="ml-2 text-xs font-normal text-amber-400">Participante reemplazado</span>}
-                                </TD>
-                                <TD className="font-medium">
-                                  <span className={f.participante2?.cancelado ? 'line-through text-muted-foreground' : ''}>
-                                    {f.participante2 ? (f.participante2.nombre ? `${f.participante2.nombre} ${f.participante2.apellido || ''}` : f.participante2.name) : '—'}
-                                  </span>
-                                  {f.participante2?.cancelado && <span className="ml-2 text-xs font-normal text-destructive">Fecha cancelada</span>}
-                                  {f.reemplazado2 && !f.participante2?.cancelado && <span className="ml-2 text-xs font-normal text-amber-400">Participante reemplazado</span>}
-                                </TD>
-                                <TD className="text-sm text-muted-foreground">{instancia}</TD>
-                                <TD>
-                                  <div className="flex items-center gap-2">
-                                    <Input type="date" value={f.fecha || ''} onChange={(e) => setTorneos((prev) => prev.map((torneo) => torneo.id === t.id ? { ...torneo, fechas: torneo.fechas.map((item, itemIdx) => itemIdx === idx ? { ...item, fecha: e.target.value } : item) } : torneo))} onBlur={(e) => guardarFecha(t.id, idx, e.target.value)} className="h-8 min-w-[145px]" />
-                                    {savingFecha === `${t.id}-${idx}` && <span className="text-xs text-muted-foreground">Guardando...</span>}
-                                  </div>
-                                </TD>
-                                <TD className="text-muted-foreground">{f.resultado || (f.jugado ? 'Jugado' : 'Pendiente')}</TD>
-                                <TD className="text-right">
-                                  <Button size="sm" variant="outline" disabled={!tieneAmbos} onClick={() => abrirEditar(t.id, idx, f)}>
-                                    <Pencil className="h-3.5 w-3.5" /> Editar
-                                  </Button>
-                                </TD>
-                              </TR>
-                            )
-                          })}
-                        </TBody>
-                      </Table>
+
+                        {fechasAbiertasParaTorneo && (
+                          <>
+                            <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3 shadow-sm">
+                              <span className="w-full text-xs font-semibold uppercase tracking-wide text-primary/80">Asignar fecha límite por ronda</span>
+                              <label className="text-xs text-muted-foreground">Ronda
+                                <select className="mt-1 ml-1 h-8 rounded-lg border border-border bg-background px-2 text-xs" value={rondaFechaSeleccionada[t.id] || ''} onChange={(e) => setRondaFechaSeleccionada((prev) => ({ ...prev, [t.id]: e.target.value }))}>
+                                  <option value="">Elegir ronda</option>
+                                  {rounds.map((round) => <option key={round} value={round}>Ronda {round}</option>)}
+                                </select>
+                              </label>
+                              <label className="text-xs text-muted-foreground">
+                                <Input type="date" value={fechaRonda[`${t.id}-${rondaFechaSeleccionada[t.id]}`] || ''} onChange={(e) => setFechaRonda((prev) => ({ ...prev, [`${t.id}-${rondaFechaSeleccionada[t.id]}`]: e.target.value }))} className="mt-1 h-8" disabled={!rondaFechaSeleccionada[t.id]} />
+                              </label>
+                              <Button size="sm" variant="outline" disabled={!rondaFechaSeleccionada[t.id] || !fechaRonda[`${t.id}-${rondaFechaSeleccionada[t.id]}`] || savingFecha === `${t.id}-round-${rondaFechaSeleccionada[t.id]}`} onClick={() => aplicarFechaRonda(t.id, Number(rondaFechaSeleccionada[t.id]))}>
+                                <Save className="h-3.5 w-3.5" /> Aplicar
+                              </Button>
+                            </div>
+                            <Table>
+                              <THead>
+                                <TR>
+                                  <TH>{t.formato?.includes('Dobles') ? 'Equipo 1' : 'Participante 1'}</TH>
+                                  <TH>{t.formato?.includes('Dobles') ? 'Equipo 2' : 'Participante 2'}</TH>
+                                  <TH>Instancia</TH>
+                                  <TH>Fecha límite</TH>
+                                  <TH>Resultado</TH>
+                                  <TH className="text-right">Acción</TH>
+                                </TR>
+                              </THead>
+                              <TBody>
+                                {t.fechas.map((f, idx) => {
+                                  const isPlayoffs = (t.formato || '').toLowerCase().includes('playoffs')
+                                  const tieneAmbos = Boolean(f.participante1 && f.participante1.id && f.participante2 && f.participante2.id)
+                                  const instancia = (() => {
+                                    if (isPlayoffs) {
+                                      if (f.thirdPlace) return 'Definición 3°'
+                                      if (f.round === maxRound) return 'Final'
+                                      if (f.round === (maxRound - 1)) return 'Semifinal'
+                                    }
+                                    return `Ronda ${f.round || 1}`
+                                  })()
+                                  const roundBg = (f.round || 1) % 2 === 0
+                                    ? 'bg-white/[0.02]'
+                                    : ''
+                                  return (
+                                    <TR key={f.id} className={roundBg}>
+                                      <TD className="font-medium">
+                                        <span className={f.participante1?.cancelado ? 'line-through text-muted-foreground' : ''}>
+                                          {f.participante1 ? (f.participante1.nombre ? `${f.participante1.nombre} ${f.participante1.apellido || ''}` : f.participante1.name) : '—'}
+                                        </span>
+                                        {f.participante1?.cancelado && <span className="ml-2 text-xs font-normal text-destructive">Fecha cancelada</span>}
+                                        {f.reemplazado1 && !f.participante1?.cancelado && <span className="ml-2 text-xs font-normal text-amber-400">Participante reemplazado</span>}
+                                      </TD>
+                                      <TD className="font-medium">
+                                        <span className={f.participante2?.cancelado ? 'line-through text-muted-foreground' : ''}>
+                                          {f.participante2 ? (f.participante2.nombre ? `${f.participante2.nombre} ${f.participante2.apellido || ''}` : f.participante2.name) : '—'}
+                                        </span>
+                                        {f.participante2?.cancelado && <span className="ml-2 text-xs font-normal text-destructive">Fecha cancelada</span>}
+                                        {f.reemplazado2 && !f.participante2?.cancelado && <span className="ml-2 text-xs font-normal text-amber-400">Participante reemplazado</span>}
+                                      </TD>
+                                      <TD className="text-sm text-muted-foreground">{instancia}</TD>
+                                      <TD>
+                                        <div className="flex items-center gap-2">
+                                          <Input type="date" value={f.fecha || ''} onChange={(e) => setTorneos((prev) => prev.map((torneo) => torneo.id === t.id ? { ...torneo, fechas: torneo.fechas.map((item, itemIdx) => itemIdx === idx ? { ...item, fecha: e.target.value } : item) } : torneo))} onBlur={(e) => guardarFecha(t.id, idx, e.target.value)} className="h-8 min-w-[145px]" />
+                                          {savingFecha === `${t.id}-${idx}` && <span className="text-xs text-muted-foreground">Guardando...</span>}
+                                        </div>
+                                      </TD>
+                                      <TD className="text-muted-foreground">{f.resultado || (f.jugado ? 'Jugado' : 'Pendiente')}</TD>
+                                      <TD className="text-right">
+                                        <Button size="sm" variant="outline" disabled={!tieneAmbos} onClick={() => abrirEditar(t.id, idx, f)}>
+                                          <Pencil className="h-3.5 w-3.5" /> Editar
+                                        </Button>
+                                      </TD>
+                                    </TR>
+                                  )
+                                })}
+                              </TBody>
+                            </Table>
+                          </>
+                        )}
                       </>
                     )
                   })() : (

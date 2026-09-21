@@ -518,6 +518,7 @@ export default function AdminTorneos() {
         description={`Formato: ${gestionandoInscriptos?.formato ?? ''}. Asigná o eliminá ${
           esSingle ? 'jugadores individuales' : 'equipos'
         } respetando las reglas del torneo.`}
+        className="max-w-7xl"
       >
         <div className="space-y-5">
           {errorMessage && (
@@ -548,7 +549,7 @@ export default function AdminTorneos() {
                 </Select>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
               {(replaceMode && selectedToRemove ? (esSingle ? candidatosJugadores : candidatosEquipos) : (esSingle ? candidatosJugadores : candidatosEquipos)).map((item) => {
                 const id = item.id || item._id
                 const selected = selectedToAdd.includes(id)
@@ -592,21 +593,21 @@ export default function AdminTorneos() {
                   No hay jugadores inscriptos en este torneo Single.
                 </div>
               ) : (
-                <div className="max-h-60 overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+                <div className="grid max-h-60 grid-cols-2 gap-2 overflow-y-auto pr-1 scrollbar-thin sm:grid-cols-3 lg:grid-cols-6">
                   {jugadoresInscriptos.map((j) => (
                     <div
                       key={j.id || j._id}
-                      className={`flex items-center justify-between rounded-lg border p-3 shadow-sm transition-colors ${replaceMode && selectedToRemove === (j.id || j._id) ? 'border-rose-400 bg-rose-500/10 ring-1 ring-rose-400/40' : 'border-border bg-card hover:border-court/40'}`}
+                      className={`flex min-w-0 items-center justify-between gap-2 rounded-lg border p-2 shadow-sm transition-colors ${replaceMode && selectedToRemove === (j.id || j._id) ? 'border-rose-400 bg-rose-500/10 ring-1 ring-rose-400/40' : 'border-border bg-card hover:border-court/40'}`}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-court/10 text-court font-semibold text-xs">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-court/10 text-court font-semibold text-xs">
                           {(j.nombre?.[0] || 'J').toUpperCase()}
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-medium text-foreground">
                             {j.nombre} {j.apellido}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="truncate text-[10px] text-muted-foreground">
                             Organización: <span className="text-foreground">{nombreOrganizacionUsuario(j)}</span> • Categoría: <span className="text-foreground">{j.categoria || j.categoriaSingle || '—'}</span>
                           </p>
                         </div>
