@@ -62,3 +62,9 @@ export async function updateFechaTorneo(tournamentId, fechaIdx, payload) {
   const { data } = await apiClient.patch(`/admin/torneos/${tournamentId}/fechas/${fechaIdx}`, payload)
   return data
 }
+
+export async function getPublicTorneos(tenantSlug) {
+  const { data } = await apiClient.get(`/public/torneos/${encodeURIComponent(tenantSlug)}`)
+  return Array.isArray(data) ? data : []
+}
+

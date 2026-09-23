@@ -20,7 +20,7 @@ apiClient.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`
   }
   const firstPathSegment = window.location.pathname.split('/').filter(Boolean)[0]
-  const reservedPaths = ['SystemMP', 'admin', 'login', 'perfil', 'mis-fechas', 'resultados', 'estadisticas']
+  const reservedPaths = ['SystemMP', 'admin', 'login', 'perfil', 'mis-fechas', 'resultados', 'estadisticas', 'dashboard']
   if (firstPathSegment && !reservedPaths.includes(firstPathSegment)) {
     config.headers['X-Tenant-Slug'] = firstPathSegment
   } else if (firstPathSegment === 'SystemMP') {

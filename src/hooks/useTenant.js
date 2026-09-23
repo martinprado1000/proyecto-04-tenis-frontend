@@ -1,6 +1,6 @@
 import { useLocation, useParams } from 'react-router-dom'
 
-export const RESERVED_SLUGS = new Set(['login', 'perfil', 'mis-fechas', 'resultados', 'admin'])
+export const RESERVED_SLUGS = new Set(['login', 'perfil', 'mis-fechas', 'resultados', 'estadisticas', 'dashboard', 'admin'])
 
 export function isSystemPath(pathname = '') {
   return pathname.split('/').filter(Boolean)[0]?.toLowerCase() === 'systemmp'

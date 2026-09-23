@@ -19,12 +19,12 @@ export function SuperRoute({ children }) {
 
   if (!isSuperadmin) {
     const slug = user?.organizationSlug
-    if (slug) return <Navigate to={`/${slug}/resultados`} replace />
+    if (slug) return <Navigate to={`/${slug}/dashboard`} replace />
     return <Navigate to="/SystemMP/login" replace />
   }
 
   if (!isSystem) {
-    return <Navigate to="/SystemMP/resultados" replace />
+    return <Navigate to="/SystemMP/dashboard" replace />
   }
 
   return children
@@ -49,11 +49,11 @@ export function ProtectedRoute({ children }) {
   }
 
   if (isSuperadmin) {
-    return <Navigate to="/SystemMP/resultados" replace />
+    return <Navigate to="/SystemMP/dashboard" replace />
   }
 
   if (user?.organizationSlug && tenantSlug !== user.organizationSlug) {
-    return <Navigate to={`/${user.organizationSlug}/resultados`} replace />
+    return <Navigate to={`/${user.organizationSlug}/dashboard`} replace />
   }
 
   return children
@@ -78,15 +78,15 @@ export function AdminRoute({ children }) {
   }
 
   if (isSuperadmin) {
-    return <Navigate to="/SystemMP/resultados" replace />
+    return <Navigate to="/SystemMP/dashboard" replace />
   }
 
   if (user?.organizationSlug && tenantSlug !== user.organizationSlug) {
-    return <Navigate to={`/${user.organizationSlug}/resultados`} replace />
+    return <Navigate to={`/${user.organizationSlug}/dashboard`} replace />
   }
 
   if (!isAdmin) {
-    return <Navigate to={tenantPath('/resultados')} replace />
+    return <Navigate to={tenantPath('/dashboard')} replace />
   }
 
   return children

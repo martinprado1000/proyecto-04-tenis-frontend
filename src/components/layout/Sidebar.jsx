@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import { User, CalendarDays, Trophy, ShieldCheck, CalendarClock, Users, Sun, Moon, BarChart3, Activity, CircleDollarSign } from 'lucide-react'
+import { LayoutDashboard, User, CalendarDays, Trophy, ShieldCheck, CalendarClock, Users, Sun, Moon, BarChart3, Activity, CircleDollarSign } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { useTenant } from '../../hooks/useTenant'
 import { cn } from '../../lib/utils'
 
 const NAV_ITEMS = [
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/perfil', label: 'Mi Perfil', icon: User },
   { to: '/mis-fechas', label: 'Mis Fechas', icon: CalendarDays },
   { to: '/resultados', label: 'Tabla de Resultados', icon: Trophy },
@@ -16,7 +17,6 @@ const NAV_ITEMS = [
 const ADMIN_ITEMS = [
   { to: '/admin/usuarios', label: 'Admin: Usuarios', icon: ShieldCheck },
   { to: '/admin/gestion_cuotas', label: 'Admin: Gestión Cuotas', icon: CircleDollarSign },
-  // { to: '/admin/analisis-deportivo', label: 'Admin: Análisis deportivo', icon: BarChart3 },
   // Organizaciones visible solo para Superadmin (se renderiza condicionalmente abajo)
 ]
 

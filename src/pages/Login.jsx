@@ -53,7 +53,7 @@ export default function Login() {
         userData.organizationLogoUrl = organization?.logoUrl
       }
       login(userData)
-      navigate(appPath('/resultados'), { replace: true })
+      navigate(appPath('/dashboard'), { replace: true })
     } catch (err) {
       const msg = err.response?.data?.message
       setError(Array.isArray(msg) ? msg.join('. ') : msg || 'No se pudo iniciar sesión. Verificá tus datos.')
