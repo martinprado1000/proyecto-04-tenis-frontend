@@ -1,52 +1,13 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Trophy, BarChart2, TrendingUp, TrendingDown, Minus, FileDown, Loader2 } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
-import { getMatchResult, getParticipantName } from './TournamentBracketModal'
+import { getParticipantName } from './TournamentBracketModal'
+import { computeRoundRobinStandings, formatSetPercentage } from './roundRobinStandings'
 import { useGeneratePdf } from '../../hooks/useGeneratePdf'
-
-function computeStandings(torneo) {
-  if (!torneo || !Array.isArray(torneo.fechas)) return []
-  const map = new Map()
-
-  function normalizeParticipant(p) {
-    if (!p) return null
-    if (typeof p === 'string') return { id: p }
-    const id = String(p.id ?? p._id ?? p.userId ?? '')
-    if (!id) return null
-    return { ...p, id }
-  }
-
-  function ensure(p) {
-    const normalized = normalizeParticipant(p)
-    if (!normalized) return
-    if (!map.has(normalized.id)) map.set(normalized.id, { participant: normalized, played: 0, wins: 0, losses: 0, points: 0 })
-  }
-
-  const participantes = torneo.jugadores || torneo.equipos || []
-  for (const participante of participantes) ensure(participante)
-
-  for (const fecha of torneo.fechas) {
-    const p1 = normalizeParticipant(fecha.participante1 || fecha.jugador1 || fecha.equipo1)
-    const p2 = normalizeParticipant(fecha.participante2 || fecha.jugador2 || fecha.equipo2)
-    ensure(p1)
-    ensure(p2)
-    const normalizedFecha = { ...fecha, participante1: p1, participante2: p2, jugado: fecha.jugado === true || Boolean(fecha.resultado) }
-    const { winner, loser, isPlayed } = getMatchResult(normalizedFecha)
-    if (!isPlayed || !winner || !loser) continue
-    const winnerId = String(winner.id ?? winner._id ?? '')
-    const loserId = String(loser.id ?? loser._id ?? '')
-    const w = map.get(winnerId)
-    const l = map.get(loserId)
-    if (w) { w.played++; w.wins++; w.points++ }
-    if (l) { l.played++; l.losses++ }
-  }
-
-  return [...map.values()].sort((a, b) =>
-    b.points !== a.points ? b.points - a.points : b.wins - a.wins
-  )
-}
+import { useTenant } from '../../hooks/useTenant'
+import { getOrganizationBySlug } from '../../api/organizations.api'
 
 function getInitials(name) {
   if (!name) return '?'
@@ -57,9 +18,15 @@ function getInitials(name) {
 }
 
 export function RoundRobinStandingsModal2({ torneo, open, onClose }) {
-  const standings = useMemo(() => computeStandings(torneo), [torneo])
+  const standings = useMemo(() => computeRoundRobinStandings(torneo), [torneo])
   const contentRef = useRef(null)
   const { generating, generatePdf } = useGeneratePdf()
+  const { tenantSlug } = useTenant()
+  const [organization, setOrganization] = useState(null)
+
+  useEffect(() => {
+    if (tenantSlug) getOrganizationBySlug(tenantSlug).then(setOrganization).catch(() => {})
+  }, [tenantSlug])
 
   if (!open || !torneo) return null
   const total = standings.length
@@ -74,15 +41,19 @@ export function RoundRobinStandingsModal2({ torneo, open, onClose }) {
       open={open}
       onClose={onClose}
       title=""
-      className="max-w-[95vw] w-[660px] bg-background text-foreground border-border p-4 sm:p-5 rounded-2xl shadow-2xl"
+      className="max-w-[70vw] w-[640px] bg-background text-foreground border-border p-4 sm:p-5 rounded-2xl shadow-2xl"
     >
       <div ref={contentRef} className="bg-background p-1.5 rounded-xl">
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-5 mb-5">
           <div className="flex items-center gap-3.5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 shadow-sm">
-              <BarChart2 className="h-6 w-6" />
-            </div>
+            {organization?.logoUrl ? (
+              <img src={organization.logoUrl} alt="Logo de la organización" className="h-12 w-12 shrink-0 rounded-2xl border border-border/50 bg-card object-cover shadow-sm" />
+            ) : (
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 shadow-sm">
+                <BarChart2 className="h-6 w-6" />
+              </div>
+            )}
             <div>
               <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
                 {torneo.name}
@@ -108,16 +79,17 @@ export function RoundRobinStandingsModal2({ torneo, open, onClose }) {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse min-w-[500px]">
+              <table className="w-full table-fixed text-sm border-collapse min-w-[500px]">
                 <thead>
                   <tr className="bg-muted/50 text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border/60">
                     <th className="w-[44px] py-3 text-center">Pos</th>
-                    <th className="w-auto py-3 pl-3 text-left">Participante</th>
-                    <th className="w-[50px] py-3 text-center" title="Partidos Jugados">PJ</th>
-                    <th className="w-[50px] py-3 text-center text-emerald-600 dark:text-emerald-500" title="Partidos Ganados">G</th>
-                    <th className="w-[50px] py-3 text-center text-rose-600 dark:text-rose-500" title="Partidos Perdidos">P</th>
-                    <th className="w-[65px] py-3 text-center text-primary font-extrabold" title="Puntos">Pts</th>
-                    <th className="w-[130px] py-3 pr-3 text-center">Estado</th>
+                    <th className="w-[125px] py-3 pl-3 text-left">Participante</th>
+                    <th className="w-[22px] py-3 text-center" title="Partidos Jugados">PJ</th>
+                    <th className="w-[22px] py-3 text-center text-emerald-600 dark:text-emerald-500" title="Partidos Ganados">G</th>
+                    <th className="w-[22px] py-3 text-center text-rose-600 dark:text-rose-500" title="Partidos Perdidos">P</th>
+                    <th className="w-[34px] py-3 text-center" title="Porcentaje de sets ganados">Sets %</th>
+                    <th className="w-[22px] py-3 text-center text-primary font-extrabold" title="Puntos">Pts</th>
+                    <th className="w-[66px] py-3 pr-3 text-center">Estado</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">
@@ -184,6 +156,7 @@ export function RoundRobinStandingsModal2({ torneo, open, onClose }) {
                         <td className="py-3.5 text-center text-sm text-muted-foreground font-medium">{row.played}</td>
                         <td className="py-3.5 text-center text-sm font-bold text-emerald-600 dark:text-emerald-500">{row.wins}</td>
                         <td className="py-3.5 text-center text-sm font-bold text-rose-600 dark:text-rose-500">{row.losses}</td>
+                        <td className="py-3.5 text-center text-sm text-muted-foreground font-medium">{formatSetPercentage(row.setPercentage)}</td>
 
                         {/* Pts */}
                         <td className="py-3.5 text-center">
@@ -230,7 +203,7 @@ export function RoundRobinStandingsModal2({ torneo, open, onClose }) {
                 Posible descenso (Últimos 2)
               </span>
             </div>
-            <span className="tracking-wide">PJ = Jugados · G = Ganados · P = Perdidos · Pts = Puntos</span>
+            <span className="tracking-wide">PJ = Jugados · G = Ganados · P = Perdidos · Sets% = Porcentaje de sets ganados · Pts = Puntos</span>
           </div>
         )}
       </div>

@@ -10,6 +10,8 @@ import { Modal } from '../../components/ui/Modal'
 import { Input, Label, Select } from '../../components/ui/Input'
 import { getEquipos, crearEquipo, updateEquipo, eliminarEquipo } from '../../api/teams.api'
 import { getUsuarios } from '../../api/admin.api'
+import { getOrganizationBySlug, getOrganizations } from '../../api/organizations.api'
+import { useTenant } from '../../hooks/useTenant'
 
 const EQUIPO_VACIO = {
   name: '',
@@ -97,6 +99,9 @@ export default function AdminEquipos() {
   const [creando, setCreando] = useState(false)
   const [eliminando, setEliminando] = useState(null)
   const [errorMessage, setErrorMessage] = useState('')
+  const [organizations, setOrganizations] = useState([])
+  const [filtroOrganizacion, setFiltroOrganizacion] = useState('')
+  const { isSystem, tenantSlug } = useTenant()
 
   const editForm = useForm({ defaultValues: EQUIPO_VACIO })
   const createForm = useForm({ defaultValues: EQUIPO_VACIO })
@@ -104,6 +109,11 @@ export default function AdminEquipos() {
   useEffect(() => {
     cargarDatos()
   }, [])
+
+  useEffect(() => {
+    const loadOrganizations = isSystem ? getOrganizations() : tenantSlug ? getOrganizationBySlug(tenantSlug).then((org) => org ? [org] : []) : Promise.resolve([])
+    loadOrganizations.then(setOrganizations).catch(() => setOrganizations([]))
+  }, [isSystem, tenantSlug])
 
   async function cargarDatos() {
     setLoading(true)
@@ -199,6 +209,17 @@ export default function AdminEquipos() {
     return `${integrante.nombre || ''} ${integrante.apellido || ''}`.trim() || integrante.email || '—'
   }
 
+  function nombreOrganizacion(organizationId) {
+    return organizations.find((org) => String(org._id || org.id) === String(organizationId))?.name || 'Sin organización'
+  }
+
+  const equiposFiltrados = equipos.filter((equipo) => {
+    if (!filtroOrganizacion) return true
+    const organization = organizations.find((org) => String(org._id || org.id) === String(filtroOrganizacion))
+    const esSystemMP = ['systemmp'].includes(String(organization?.name || '').trim().toLowerCase()) || ['systemmp'].includes(String(organization?.slug || '').trim().toLowerCase())
+    return esSystemMP ? !equipo.organizationId : String(equipo.organizationId) === String(filtroOrganizacion)
+  })
+
   return (
     <div>
       <PageHeader
@@ -215,7 +236,7 @@ export default function AdminEquipos() {
               Equipos registrados
             </CardTitle>
             <div className="flex items-center gap-2">
-              <Badge variant="admin">{equipos.length} equipos</Badge>
+              <Badge variant="admin">{equiposFiltrados.length} equipos</Badge>
               <Button size="sm" onClick={abrirCreacion}>
                 <Plus className="h-4 w-4" /> Crear Nuevo Equipo
               </Button>
@@ -234,11 +255,17 @@ export default function AdminEquipos() {
                     <TH>Integrante 1</TH>
                     <TH>Integrante 2</TH>
                     <TH>Tipo</TH>
+                    <TH>
+                      <div className="flex items-center gap-2"><span>Organización</span>{isSystem && <Select value={filtroOrganizacion} onChange={(event) => setFiltroOrganizacion(event.target.value)} className="h-7 min-w-[100px] px-2 text-[11px]" aria-label="Filtrar equipos por organización">
+                        <option value="">Todas</option>
+                        {organizations.map((org) => <option key={org._id || org.id} value={org._id || org.id}>{org.name}</option>)}
+                      </Select>}</div>
+                    </TH>
                     <TH className="text-right">Acciones</TH>
                   </TR>
                 </THead>
                 <TBody>
-                  {equipos.map((eq) => (
+                  {equiposFiltrados.map((eq) => (
                     <TR key={eq.id}>
                       <TD className="font-medium text-foreground">{eq.name}</TD>
                       <TD className="text-muted-foreground">{renderNombreIntegrante(eq.integrante1)}</TD>
@@ -256,6 +283,7 @@ export default function AdminEquipos() {
                           {eq.tipo}
                         </Badge>
                       </TD>
+                      <TD className="text-muted-foreground">{nombreOrganizacion(eq.organizationId)}</TD>
                       <TD className="text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <Button size="sm" variant="outline" onClick={() => abrirEdicion(eq)}>

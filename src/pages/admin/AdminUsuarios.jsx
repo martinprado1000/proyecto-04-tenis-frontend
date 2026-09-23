@@ -18,10 +18,10 @@ const dniPattern = /^\d+$/
 const CATEGORIAS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 const USUARIO_VACIO = {
   nombre: '', apellido: '', dni: '', telefono: '', sexo: '', categoria: '', email: '', fechaNacimiento: '',
-  organizationId: '', activo: true, rol: 'user', password: '', confirmPassword: '',
+  organizationId: '', activo: true, isClient: 'false', rol: 'user', password: '', confirmPassword: '',
 }
 
-function FormularioUsuario({ register, errors, watch, organizations, showOrganization }) {
+function FormularioUsuario({ register, errors, watch, organizations, showOrganization, showIsClient = false }) {
   // Sexo obligatorio and club fixed handled by form validation and mock data
   const passwordPattern = /(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*/
   const pwd = watch('password')
@@ -144,6 +144,14 @@ function FormularioUsuario({ register, errors, watch, organizations, showOrganiz
         </Select>
       </div>
 
+      {showIsClient && <div>
+        <Label htmlFor="u-es-cliente">Es cliente</Label>
+        <Select id="u-es-cliente" {...register('isClient')}>
+          <option value="false">NO</option>
+          <option value="true">SI</option>
+        </Select>
+      </div>}
+
       <div>
         <Label htmlFor="u-rol">Rol</Label>
         <Select id="u-rol" {...register('rol', { required: 'Seleccioná un rol' })} error={Boolean(errors.rol)}>
@@ -265,6 +273,7 @@ export default function AdminUsuarios() {
       const normalized = {
         ...form,
         activo: String(form.activo ?? true),
+        isClient: String(form.isClient ?? false),
       }
       editForm.reset(normalized)
       createForm.reset(normalized)
@@ -435,7 +444,8 @@ export default function AdminUsuarios() {
                         )}
                       </div>
                     </TH>
-                    <TH>Activo</TH>
+                    <TH>Activo en torneos</TH>
+                    <TH>Es cliente</TH>
                     <TH>Rol</TH>
                     <TH className="text-right">Acción</TH>
                   </TR>
@@ -456,6 +466,9 @@ export default function AdminUsuarios() {
                         <TD className="text-muted-foreground">{organizations.find((org) => (org._id || org.id) === u.organizationId)?.name || 'Sin organización'}</TD>
                         <TD>
                           <Badge variant={u.activo ? 'success' : 'destructive'}>{u.activo ? 'Sí' : 'No'}</Badge>
+                        </TD>
+                        <TD>
+                          <Badge variant={u.isClient ? 'success' : 'outline'}>{u.isClient ? 'Sí' : 'No'}</Badge>
                         </TD>
                         <TD>
                           <Badge variant={u.rol === 'admin' ? 'admin' : 'outline'}>
@@ -541,6 +554,7 @@ export default function AdminUsuarios() {
               watch={editForm.watch}
               organizations={organizations}
               showOrganization={isSystem}
+              showIsClient
             />
             <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
               <Button type="button" variant="outline" onClick={cerrarModal}>Cancelar</Button>
@@ -565,6 +579,7 @@ export default function AdminUsuarios() {
               watch={createForm.watch}
               organizations={organizations}
               showOrganization={isSystem}
+              showIsClient
             />
             <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
               <Button type="button" variant="outline" onClick={cerrarModal}>Cancelar</Button>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Sparkles, Pencil, CalendarClock, CalendarDays, ChevronDown, ChevronUp, Save } from 'lucide-react'
+import { Sparkles, Pencil, CalendarClock, CalendarDays, ChevronDown, ChevronUp, Save, CheckCircle2 } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card'
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/Table'
@@ -15,7 +15,7 @@ import { RoundRobinStandingsModal } from '../../components/tournaments/RoundRobi
 import { RoundRobinStandingsModal2 } from '../../components/tournaments/RoundRobinStandingsModal2'
 import { X } from 'lucide-react'
 import { useTenant } from '../../hooks/useTenant'
-import { getOrganizationBySlug } from '../../api/organizations.api'
+import { getOrganizationBySlug, getOrganizations } from '../../api/organizations.api'
 import { downloadTournamentRoundPdf, getTournamentRoundOptions } from '../../utils/downloadTournamentRoundsPdf'
 
 const ESTADO_VARIANT = {
@@ -55,18 +55,33 @@ export default function AdminFechas() {
   const [rondaFechaSeleccionada, setRondaFechaSeleccionada] = useState({})
   const [fechasAbiertas, setFechasAbiertas] = useState({})
   const [organization, setOrganization] = useState(null)
+  const [organizations, setOrganizations] = useState([])
+  const [filtroOrganizacion, setFiltroOrganizacion] = useState('')
+  const [generationErrors, setGenerationErrors] = useState({})
   const { tenantSlug, isSystem } = useTenant()
   const modalForm = useForm({
     defaultValues: modal?.data || { sets: [{ local: '', visitante: '' }, { local: '', visitante: '' }, { local: '', visitante: '' }] },
   })
 
   useEffect(() => {
-    if (!isSystem && tenantSlug) getOrganizationBySlug(tenantSlug).then(setOrganization).catch(() => {})
+    if (isSystem) getOrganizations().then(setOrganizations).catch(() => setOrganizations([]))
+    else if (tenantSlug) getOrganizationBySlug(tenantSlug).then((org) => { setOrganization(org); setOrganizations(org ? [org] : []) }).catch(() => {})
     getTorneos().then((data) => {
-      setTorneos(data)
+      setTorneos(data.filter((torneo) => torneo.isActive !== false))
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [])
+
+  function nombreOrganizacion(organizationId) {
+    return organizations.find((org) => String(org._id || org.id) === String(organizationId))?.name || 'Sin organización'
+  }
+
+  const torneosFiltrados = torneos.filter((torneo) => {
+    if (!filtroOrganizacion) return true
+    const org = organizations.find((item) => String(item._id || item.id) === String(filtroOrganizacion))
+    const esSystemMP = ['systemmp'].includes(String(org?.name || '').trim().toLowerCase()) || ['systemmp'].includes(String(org?.slug || '').trim().toLowerCase())
+    return esSystemMP ? !torneo.organizationId : String(torneo.organizationId) === String(filtroOrganizacion)
+  })
 
   const partidoEditando = modal
     ? torneos.find((torneo) => torneo.id === modal.torneoId)?.fechas?.[modal.fechaIdx]
@@ -77,10 +92,24 @@ export default function AdminFechas() {
   useEffect(() => { if (modal) modalForm.reset(modal.data) }, [modal, modalForm])
 
   async function handleGenerarAuto(torneoId) {
+    const torneo = torneos.find((item) => item.id === torneoId)
+    const participantes = torneo?.formato?.includes('Dobles') ? torneo?.equipos : torneo?.jugadores
+    if (!participantes?.length) {
+      setGenerationErrors((current) => ({ ...current, [torneoId]: 'No tiene jugadores asignados a este torneo' }))
+      return
+    }
+
+    setGenerationErrors((current) => ({ ...current, [torneoId]: '' }))
     setGenerando(true)
     try {
       const updated = await generarFechasTorneo(torneoId)
       setTorneos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+    } catch (error) {
+      const message = error.response?.data?.message || error.message || 'No se pudieron generar las fechas.'
+      setGenerationErrors((current) => ({
+        ...current,
+        [torneoId]: Array.isArray(message) ? message.join(', ') : message,
+      }))
     } finally {
       setGenerando(false)
     }
@@ -270,6 +299,10 @@ export default function AdminFechas() {
         <div className="mb-6 flex items-center justify-between gap-3">
           <h3 className="text-lg font-medium">Torneos</h3>
           <div className="flex items-center gap-2">
+            {isSystem && <select value={filtroOrganizacion} onChange={(event) => setFiltroOrganizacion(event.target.value)} className="h-9 min-w-[180px] rounded-lg border border-input bg-background px-3 text-sm" aria-label="Filtrar fechas por organización">
+              <option value="">Organización: Todas</option>
+              {organizations.map((org) => <option key={org._id || org.id} value={org._id || org.id}>{org.name}</option>)}
+            </select>}
             <Button variant="outline" onClick={() => { /* placeholder: could refresh */ }}>
               <Sparkles className="h-4 w-4" /> Refrescar
             </Button>
@@ -279,19 +312,38 @@ export default function AdminFechas() {
         <div className="grid grid-cols-1 gap-4">
           {loading ? (
             <p className="text-sm text-muted-foreground">Cargando torneos...</p>
-          ) : torneos.length === 0 ? (
+          ) : torneosFiltrados.length === 0 ? (
             <p className="text-sm text-muted-foreground">No hay torneos disponibles.</p>
           ) : (
-            torneos.map((t) => (
+            torneosFiltrados.map((t) => (
               <Card key={t.id}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="flex items-center gap-2">
+                      <CardTitle className="flex flex-wrap items-center gap-2">
                         <CalendarClock className="h-[18px] w-[18px] text-court" />
                         {t.name}
+                        {(() => {
+                          const isRoundRobin = (t.formato || '').toLowerCase().includes('roundrobin') || (t.formato || '').toLowerCase().includes('round robin')
+                          const matchesToComplete = (t.fechas || []).filter((match) => {
+                            if (match.bye) return false
+                            if (isRoundRobin && (!match.participante1?.id || !match.participante2?.id)) return false
+                            if (match.thirdPlace && (!match.participante1?.id || !match.participante2?.id)) return false
+                            return true
+                          })
+                          const torneoFinalizado = matchesToComplete.length > 0 && matchesToComplete.every((match) => match.jugado === true || Boolean(match.resultado))
+                          return torneoFinalizado ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Torneo finalizado
+                            </span>
+                          ) : null
+                        })()}
                       </CardTitle>
+                      {generationErrors[t.id] && (
+                        <p className="mt-1 text-xs font-semibold text-destructive">{generationErrors[t.id]}</p>
+                      )}
                       <p className="text-sm text-muted-foreground">Formato: {t.formato} · Participantes: {t.jugadores.length || t.equipos.length}</p>
+                      <p className="text-sm text-muted-foreground">Organización: {nombreOrganizacion(t.organizationId)}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button variant="outline" disabled={Boolean(t.fechas && t.fechas.length > 0)} loading={generando} onClick={() => handleGenerarAuto(t.id)}>
@@ -300,7 +352,7 @@ export default function AdminFechas() {
                       {t.formato && t.formato.toLowerCase().includes('playoffs') && (
                         <div className="flex gap-2">
                           {/* <Button variant="outline" onClick={() => abrirBracket(t)}>
-                            Mostrar llave
+                            Mostrar llave 2
                           </Button>*/}
                           <Button variant="outline" onClick={() => abrirBracket2(t)}>
                             Mostrar llave
@@ -396,6 +448,7 @@ export default function AdminFechas() {
                               <TBody>
                                 {t.fechas.map((f, idx) => {
                                   const isPlayoffs = (t.formato || '').toLowerCase().includes('playoffs')
+                                  const isRoundRobin = (t.formato || '').toLowerCase().includes('roundrobin') || (t.formato || '').toLowerCase().includes('round robin')
                                   const tieneAmbos = Boolean(f.participante1 && f.participante1.id && f.participante2 && f.participante2.id)
                                   const instancia = (() => {
                                     if (isPlayoffs) {
@@ -411,15 +464,15 @@ export default function AdminFechas() {
                                   return (
                                     <TR key={f.id} className={roundBg}>
                                       <TD className="font-medium">
-                                        <span className={f.participante1?.cancelado ? 'line-through text-muted-foreground' : ''}>
-                                          {f.participante1 ? (f.participante1.nombre ? `${f.participante1.nombre} ${f.participante1.apellido || ''}` : f.participante1.name) : '—'}
+                                        <span className={!f.participante1 && isRoundRobin ? 'text-blue-400' : f.participante1?.cancelado ? 'line-through text-muted-foreground' : ''}>
+                                          {f.participante1 ? (f.participante1.nombre ? `${f.participante1.nombre} ${f.participante1.apellido || ''}` : f.participante1.name) : (isRoundRobin ? 'Fecha libre' : '—')}
                                         </span>
                                         {f.participante1?.cancelado && <span className="ml-2 text-xs font-normal text-destructive">Fecha cancelada</span>}
                                         {f.reemplazado1 && !f.participante1?.cancelado && <span className="ml-2 text-xs font-normal text-amber-400">Participante reemplazado</span>}
                                       </TD>
                                       <TD className="font-medium">
-                                        <span className={f.participante2?.cancelado ? 'line-through text-muted-foreground' : ''}>
-                                          {f.participante2 ? (f.participante2.nombre ? `${f.participante2.nombre} ${f.participante2.apellido || ''}` : f.participante2.name) : '—'}
+                                        <span className={!f.participante2 && isRoundRobin ? 'text-blue-400' : f.participante2?.cancelado ? 'line-through text-muted-foreground' : ''}>
+                                          {f.participante2 ? (f.participante2.nombre ? `${f.participante2.nombre} ${f.participante2.apellido || ''}` : f.participante2.name) : (isRoundRobin ? 'Fecha libre' : '—')}
                                         </span>
                                         {f.participante2?.cancelado && <span className="ml-2 text-xs font-normal text-destructive">Fecha cancelada</span>}
                                         {f.reemplazado2 && !f.participante2?.cancelado && <span className="ml-2 text-xs font-normal text-amber-400">Participante reemplazado</span>}
@@ -431,7 +484,9 @@ export default function AdminFechas() {
                                           {savingFecha === `${t.id}-${idx}` && <span className="text-xs text-muted-foreground">Guardando...</span>}
                                         </div>
                                       </TD>
-                                      <TD className="text-muted-foreground">{f.resultado || (f.jugado ? 'Jugado' : 'Pendiente')}</TD>
+                                      <TD className={f.resultado || f.jugado ? 'text-muted-foreground' : 'font-semibold text-destructive'}>
+                                        {f.resultado || (f.jugado ? 'Jugado' : 'Pendiente')}
+                                      </TD>
                                       <TD className="text-right">
                                         <Button size="sm" variant="outline" disabled={!tieneAmbos} onClick={() => abrirEditar(t.id, idx, f)}>
                                           <Pencil className="h-3.5 w-3.5" /> Editar

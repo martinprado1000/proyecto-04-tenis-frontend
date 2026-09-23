@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
+import { apiClient } from '../api/client'
 
 const AuthContext = createContext(null)
 const STORAGE_KEY = 'mp_user'
@@ -22,6 +23,19 @@ export function AuthProvider({ children }) {
       window.sessionStorage.removeItem(TOKEN_KEY)
     }
   }, [user])
+
+  useEffect(() => {
+    if (!user?.token) return
+
+    apiClient.get('/auth/check-status')
+      .then(({ data }) => {
+        setUser((currentUser) => currentUser ? {
+          ...currentUser,
+          isClient: data.isClient ?? false,
+        } : currentUser)
+      })
+      .catch(() => {})
+  }, [user?.token])
 
   const login = (userData) => setUser(userData)
   const logout = () => setUser(null)

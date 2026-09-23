@@ -19,6 +19,7 @@ function mapBackendUser(data) {
     roles,
     isSuperadmin: roles.some((r) => String(r).toUpperCase() === 'SUPERADMIN'),
     activo: data.isActive ?? true,
+    isClient: data.isClient ?? false,
     token: data.token,
     organizationId: data.organizationId || null,
   }

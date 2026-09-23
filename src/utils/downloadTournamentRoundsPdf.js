@@ -4,14 +4,14 @@ function safeFileName(value) {
   return String(value || 'torneo').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '')
 }
 
-function participantName(participant) {
-  if (!participant) return 'Por definir'
+function participantName(participant, isRoundRobin) {
+  if (!participant) return isRoundRobin ? 'Fecha libre' : 'Por definir'
   if (participant.nombre || participant.apellido) return `${participant.nombre || ''} ${participant.apellido || ''}`.trim()
   if (participant.name || participant.lastname) return `${participant.name || ''} ${participant.lastname || ''}`.trim()
   if (participant.integrante1 || participant.integrante2) {
-    return [participant.integrante1, participant.integrante2].filter(Boolean).map(participantName).join(' / ') || participant.name || 'Equipo'
+    return [participant.integrante1, participant.integrante2].filter(Boolean).map((member) => participantName(member, isRoundRobin)).join(' / ') || participant.name || 'Equipo'
   }
-  return 'Por definir'
+  return isRoundRobin ? 'Fecha libre' : 'Por definir'
 }
 
 function formatDate(value) {
@@ -133,6 +133,8 @@ export async function downloadTournamentRoundPdf(tournament, organization = {}, 
   if (!option) return
 
   const matches = (tournament.fechas || []).filter(option.filter)
+  const isRoundRobin = (tournament.formato || '').toLowerCase().includes('roundrobin')
+    || (tournament.formato || '').toLowerCase().includes('round robin')
   const title = option.title || option.label
   const rowsPerPage = 25
   const tableTop = 82
@@ -185,8 +187,8 @@ export async function downloadTournamentRoundPdf(tournament, organization = {}, 
       doc.setDrawColor(226, 232, 240)
       doc.roundedRect(leftX, rowY, tableWidth, rowHeight - 0.4, 2.5, 2.5, 'FD')
 
-      const leftName = participantName(match.participante1).slice(0, 23)
-      const rightName = participantName(match.participante2).slice(0, 23)
+      const leftName = participantName(match.participante1, isRoundRobin).slice(0, 23)
+      const rightName = participantName(match.participante2, isRoundRobin).slice(0, 23)
 
       doc.setTextColor(30, 41, 59)
       doc.setFont('helvetica', 'normal')

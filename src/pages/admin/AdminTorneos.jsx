@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Trophy, Plus, Pencil, Trash2, Users, UserPlus, ShieldAlert, CheckCircle2, X } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
@@ -19,7 +19,7 @@ import {
 } from '../../api/tournaments.api'
 import { getUsuarios } from '../../api/admin.api'
 import { getEquipos } from '../../api/teams.api'
-import { getOrganizationBySlug } from '../../api/organizations.api'
+import { getOrganizationBySlug, getOrganizations } from '../../api/organizations.api'
 import { useTenant } from '../../hooks/useTenant'
 
 const TORNEO_VACIO = {
@@ -31,7 +31,7 @@ const TORNEO_VACIO = {
   setsCount: 3,
 }
 
-function FormularioTorneo({ register, errors }) {
+function FormularioTorneo({ register, errors, validateName }) {
   return (
     <div className="space-y-4">
       <div>
@@ -39,7 +39,10 @@ function FormularioTorneo({ register, errors }) {
         <Input
           id="t-name"
           placeholder="Ej: Torneo Anual Año: 2000"
-          {...register('name', { required: 'El nombre del torneo es obligatorio' })}
+          {...register('name', {
+            required: 'El nombre del torneo es obligatorio',
+            ...(validateName ? { validate: validateName } : {}),
+          })}
           error={Boolean(errors.name)}
         />
         {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
@@ -108,22 +111,48 @@ export default function AdminTorneos() {
   const [selectedCategory, setSelectedCategory] = useState('')
   const [replaceMode, setReplaceMode] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [estadoFiltro, setEstadoFiltro] = useState('todos')
+  const [filtroOrganizacion, setFiltroOrganizacion] = useState('')
 
   const editForm = useForm({ defaultValues: TORNEO_VACIO })
   const createForm = useForm({ defaultValues: TORNEO_VACIO })
-  const { tenantSlug } = useTenant()
+  const { tenantSlug, isSystem } = useTenant()
+
+  const torneosOrdenados = useMemo(() => {
+    return torneos
+      .filter((torneo) => {
+        const coincideEstado = estadoFiltro === 'todos' || (estadoFiltro === 'activos' ? torneo.isActive !== false : torneo.isActive === false)
+        if (!coincideEstado || !filtroOrganizacion) return coincideEstado
+        const organization = organizations.find((org) => String(org._id || org.id) === String(filtroOrganizacion))
+        const esSystemMP = ['systemmp'].includes(String(organization?.name || '').trim().toLowerCase()) || ['systemmp'].includes(String(organization?.slug || '').trim().toLowerCase())
+        return esSystemMP ? !torneo.organizationId : String(torneo.organizationId) === String(filtroOrganizacion)
+      })
+      .slice()
+      .sort((first, second) => {
+        const firstDate = first.fechaInicio ? new Date(first.fechaInicio).getTime() : 0
+        const secondDate = second.fechaInicio ? new Date(second.fechaInicio).getTime() : 0
+        if (secondDate !== firstDate) return secondDate - firstDate
+        return String(first.name || '').localeCompare(String(second.name || ''))
+      })
+  }, [torneos, estadoFiltro, filtroOrganizacion, organizations])
 
   useEffect(() => {
     cargarTodo()
   }, [])
 
   useEffect(() => {
-    if (tenantSlug) {
+    if (isSystem) {
+      getOrganizations().then(setOrganizations).catch(() => setOrganizations([]))
+    } else if (tenantSlug) {
       getOrganizationBySlug(tenantSlug).then((organization) => {
         setOrganizations(organization ? [organization] : [])
       }).catch(() => setOrganizations([]))
     }
-  }, [tenantSlug])
+  }, [tenantSlug, isSystem])
+
+  function nombreOrganizacion(organizationId) {
+    return organizations.find((org) => String(org._id || org.id) === String(organizationId))?.name || 'Sin organización'
+  }
 
   async function cargarTodo() {
     setLoading(true)
@@ -229,6 +258,12 @@ export default function AdminTorneos() {
     } finally {
       setSaving(false)
     }
+  }
+
+  function validarNombreNuevoTorneo(value) {
+    const normalizedName = String(value || '').trim().toLocaleLowerCase()
+    const duplicated = torneos.some((torneo) => String(torneo.name || '').trim().toLocaleLowerCase() === normalizedName)
+    return duplicated ? 'Ya existe un torneo con ese nombre.' : true
   }
 
   async function confirmarEliminar() {
@@ -377,7 +412,7 @@ export default function AdminTorneos() {
               Torneos programados
             </CardTitle>
             <div className="flex items-center gap-2">
-              <Badge variant="admin">{torneos.length} torneos</Badge>
+              <Badge variant="admin">{torneosOrdenados.length} torneos</Badge>
               <Button size="sm" onClick={abrirCreacion}>
                 <Plus className="h-4 w-4" /> Crear Nuevo Torneo
               </Button>
@@ -388,6 +423,8 @@ export default function AdminTorneos() {
               <p className="text-sm text-muted-foreground">Cargando torneos...</p>
             ) : torneos.length === 0 ? (
               <p className="text-sm text-muted-foreground">No hay torneos creados actualmente.</p>
+            ) : torneosOrdenados.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No hay torneos que coincidan con el filtro seleccionado.</p>
             ) : (
               <Table>
                 <THead>
@@ -396,12 +433,32 @@ export default function AdminTorneos() {
                     <TH>Formato</TH>
                     <TH>Inscriptos</TH>
                     <TH>Fecha Inicio / Fin</TH>
-                    <TH>Estado</TH>
+                    <TH>
+                      <div className="flex items-center gap-2"><span>Organización</span>{isSystem && <Select value={filtroOrganizacion} onChange={(event) => setFiltroOrganizacion(event.target.value)} className="h-7 min-w-[100px] px-2 text-[11px]" aria-label="Filtrar torneos por organización">
+                        <option value="">Todas</option>
+                        {organizations.map((org) => <option key={org._id || org.id} value={org._id || org.id}>{org.name}</option>)}
+                      </Select>}</div>
+                    </TH>
+                    <TH>
+                      <div className="flex items-center gap-2">
+                        <span>Estado</span>
+                        <Select
+                          aria-label="Filtrar torneos por estado"
+                          value={estadoFiltro}
+                          onChange={(event) => setEstadoFiltro(event.target.value)}
+                          className="h-7 w-auto min-w-[105px] px-2 text-[11px]"
+                        >
+                          <option value="todos">Todos</option>
+                          <option value="activos">Activos</option>
+                          <option value="inactivos">Inactivos</option>
+                        </Select>
+                      </div>
+                    </TH>
                     <TH className="text-right">Acciones</TH>
                   </TR>
                 </THead>
                 <TBody>
-                  {torneos.map((t) => {
+                  {torneosOrdenados.map((t) => {
                     const isSingleFmt = t.formato?.includes('Single')
                     const inscriptosCount = isSingleFmt ? (t.jugadores?.length || 0) : (t.equipos?.length || 0)
 
@@ -425,8 +482,9 @@ export default function AdminTorneos() {
                         <TD className="text-muted-foreground font-mono text-xs">
                           {t.fechaInicio || '—'} / {t.fechaFin || '—'}
                         </TD>
+                        <TD className="text-muted-foreground">{nombreOrganizacion(t.organizationId)}</TD>
                         <TD>
-                          <Badge variant={t.isActive ? 'success' : 'secondary'}>
+                          <Badge variant={t.isActive ? 'success' : 'destructive'}>
                             {t.isActive ? 'Activo' : 'Inactivo'}
                           </Badge>
                         </TD>
@@ -487,7 +545,11 @@ export default function AdminTorneos() {
               {errorMessage}
             </div>
           )}
-          <FormularioTorneo register={createForm.register} errors={createForm.formState.errors} />
+          <FormularioTorneo
+            register={createForm.register}
+            errors={createForm.formState.errors}
+            validateName={validarNombreNuevoTorneo}
+          />
           <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
             <Button type="button" variant="outline" onClick={cerrarModal}>Cancelar</Button>
             <Button type="submit" loading={saving}>{saving ? 'Creando...' : 'Crear torneo'}</Button>

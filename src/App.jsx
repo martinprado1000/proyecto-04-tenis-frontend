@@ -16,6 +16,7 @@ import AdminEquipos from './pages/admin/AdminEquipos'
 import AdminTorneos from './pages/admin/AdminTorneos'
 import AdminOrganizaciones from './pages/admin/AdminOrganizaciones'
 import AdminAnalisisDeportivo from './pages/admin/AdminAnalisisDeportivo'
+import AdminGestionCuotas from './pages/admin/AdminGestionCuotas'
 import { getOrganizationBySlug } from './api/organizations.api'
 import { isSystemPath } from './hooks/useTenant'
 
@@ -106,6 +107,7 @@ export default function App() {
         <Route path="admin/fechas" element={<AdminRoute><AdminFechas /></AdminRoute>} />
         <Route path="admin/equipos" element={<AdminRoute><AdminEquipos /></AdminRoute>} />
         <Route path="admin/torneos" element={<AdminRoute><AdminTorneos /></AdminRoute>} />
+        <Route path="admin/gestion_cuotas" element={<AdminRoute><AdminGestionCuotas /></AdminRoute>} />
         <Route path="admin/organizaciones" element={<SuperRoute><AdminOrganizaciones /></SuperRoute>} />
       </Route>
       <Route path="/:tenantSlug/login" element={<TenantLoginRoute />} />
@@ -121,6 +123,7 @@ export default function App() {
         <Route path="admin/fechas" element={<AdminRoute><AdminFechas /></AdminRoute>} />
         <Route path="admin/equipos" element={<AdminRoute><AdminEquipos /></AdminRoute>} />
         <Route path="admin/torneos" element={<AdminRoute><AdminTorneos /></AdminRoute>} />
+        <Route path="admin/gestion_cuotas" element={<AdminRoute><AdminGestionCuotas /></AdminRoute>} />
         <Route path="admin/analisis-deportivo" element={<AdminRoute><AdminAnalisisDeportivo /></AdminRoute>} />
       </Route>
       <Route path="*" element={<CatchAll />} />

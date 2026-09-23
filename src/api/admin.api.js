@@ -42,6 +42,7 @@ function mapBackendUser(data) {
     enJuegoSingle: data.enJuegoSingle ?? data.enJuego ?? false,
     enJuegoDobles: data.enJuegoDobles ?? false,
     activo: data.isActive ?? data.activo ?? true,
+    isClient: data.isClient ?? false,
     rol: isAdmin ? 'admin' : 'user',
     organizationId: data.organizationId || null,
   }
@@ -75,6 +76,7 @@ export async function updateUsuario(id, payload) {
     telefono: payload.telefono?.trim() || '',
     roles: payload.rol === 'admin' ? ['ADMIN'] : ['USER'],
     isActive: String(payload.activo) === 'true',
+    isClient: payload.isClient === true || payload.isClient === 'true',
   }
 
   if (payload.categoria) {
@@ -123,6 +125,7 @@ export async function crearUsuario(payload) {
     confirmPassword: payload.confirmPassword || defaultPassword,
     roles: payload.rol === 'admin' ? ['ADMIN'] : ['USER'],
     isActive: String(payload.activo) === 'true',
+    isClient: payload.isClient === true || payload.isClient === 'true',
   }
 
   if (payload.categoria) {
