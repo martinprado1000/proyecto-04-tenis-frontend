@@ -53,3 +53,11 @@ export async function registro({ nombre, apellido, email, password, confirmPassw
   const { data } = await apiClient.post('/auth/register', payload)
   return mapBackendUser(data)
 }
+
+/**
+ * PATCH /api/recoveryPassword
+ * Body: { email }
+ */
+export async function recoveryPassword({ email }) {
+  await apiClient.patch('/recoveryPassword', { email })
+}

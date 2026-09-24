@@ -165,6 +165,18 @@ export default function Login() {
                 {loading ? 'Ingresando...' : 'Ingresar'}
               </Button>
 
+              {!isSystem && tenantSlug && (
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => navigate(appPath('/recuperar-contraseña'))}
+                    className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
+              )}
+
               <p className="text-center text-xs text-muted-foreground">
                 Sus datos son privados y no seran dibulgados.
                 (<span className="font-mono text-foreground">Su contraseña es completamente privada</span>)

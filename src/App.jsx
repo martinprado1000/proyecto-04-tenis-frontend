@@ -20,6 +20,7 @@ import AdminAnalisisDeportivo from './pages/admin/AdminAnalisisDeportivo'
 import AdminGestionCuotas from './pages/admin/AdminGestionCuotas'
 import { getOrganizationBySlug } from './api/organizations.api'
 import { RESERVED_SLUGS } from './hooks/useTenant'
+import RecuperarPassword from './pages/RecuperarPassword'
 
 function CatchAll() {
   const { isAuthenticated, isSuperadmin, user } = useAuth()
@@ -164,6 +165,7 @@ export default function App() {
       </Route>
 
       <Route path="/:tenantSlug/login" element={<TenantLoginRoute />} />
+      <Route path="/:tenantSlug/recuperar-contraseña" element={<RecuperarPassword />} />
 
       {/* Rutas de la Organización / Tenant */}
       <Route path="/:tenantSlug">

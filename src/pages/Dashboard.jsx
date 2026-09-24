@@ -335,52 +335,45 @@ export default function Dashboard({ publicMode = false }) {
             </p>
           </Card>
         ) : (
-          <div className="space-y-8">
-            {/* 4. Selector de Torneo Activo */}
-            <div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-lg font-bold tracking-tight">Torneos en Curso</h2>
-                  <p className="text-xs text-muted-foreground">Seleccioná un torneo para explorar su tabla provisoria y calendario</p>
-                </div>
-
-                {/* Barra de búsqueda rápida */}
-                <div className="relative w-full sm:w-72">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Buscar participante..."
-                    className="w-full rounded-xl border border-border bg-card py-2 pl-9 pr-4 text-xs font-medium focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                </div>
+          <div className="space-y-6">
+            {/* Torneos en Curso — layout v2 (rollback: src/pages/_rollback/Dashboard-torneos-en-curso.v1.md) */}
+            <section aria-labelledby="torneos-en-curso-heading">
+              <div className="mb-4">
+                <h2 id="torneos-en-curso-heading" className="text-lg font-bold tracking-tight">
+                  Torneos en Curso
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Elegí un torneo; todo lo que aparece en el recuadro verde corresponde a esa competencia.
+                </p>
               </div>
 
-              {/* Pestañas de torneos */}
-              <div className="mt-4 flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin">
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                 {torneos.map((t) => {
                   const isSelected = t.id === currentTorneo?.id
                   const isRoundRobin = t.formato?.toLowerCase().includes('roundrobin')
                   return (
                     <button
                       key={t.id}
+                      type="button"
                       onClick={() => {
                         setSelectedTorneoId(t.id)
                         setSearchQuery('')
                       }}
-                      className={`group flex shrink-0 items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${
+                      aria-pressed={isSelected}
+                      className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${
                         isSelected
-                          ? 'border-primary bg-primary/10 shadow-md shadow-primary/10 ring-1 ring-primary'
+                          ? 'border-primary bg-primary/10 shadow-md shadow-primary/10 ring-2 ring-primary/60'
                           : 'border-border bg-card/60 hover:border-primary/40 hover:bg-accent/40'
                       }`}
                     >
-                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold ${
-                        isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                      }`}>
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold ${
+                          isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
                         {isRoundRobin ? <BarChart2 className="h-5 w-5" /> : <GitBranch className="h-5 w-5" />}
                       </div>
-                      <div className="max-w-[190px]">
+                      <div className="min-w-0 flex-1">
                         <p className={`truncate text-sm font-bold ${isSelected ? 'text-primary' : 'text-foreground'}`}>
                           {t.name}
                         </p>
@@ -388,20 +381,55 @@ export default function Dashboard({ publicMode = false }) {
                           {t.formato} · {t.jugadores?.length || t.equipos?.length || 0} part.
                         </p>
                       </div>
+                      {isSelected && (
+                        <Badge variant="outline" className="hidden shrink-0 border-primary/40 bg-primary/15 text-[10px] text-primary sm:inline-flex">
+                          Activo
+                        </Badge>
+                      )}
                     </button>
                   )
                 })}
               </div>
-            </div>
+            </section>
 
-            {/* 5. Detalle del Torneo Enfocado */}
             {currentTorneo && (
-              <div className="space-y-8">
+              <section
+                className="overflow-hidden rounded-3xl border-2 border-primary/45 bg-gradient-to-b from-primary/[0.08] via-card/40 to-card/80 shadow-lg shadow-primary/10 ring-1 ring-primary/20"
+                aria-labelledby="torneo-seleccionado-heading"
+              >
+                <div className="border-b border-primary/25 bg-primary/10 px-4 py-3 sm:px-6">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-start gap-2.5">
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                        <Trophy className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-primary">
+                          Datos del torneo seleccionado
+                        </p>
+                        <h2 id="torneo-seleccionado-heading" className="truncate text-lg font-extrabold sm:text-xl">
+                          {currentTorneo.name}
+                        </h2>
+                      </div>
+                    </div>
+                    <div className="relative w-full sm:w-72">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Buscar participante en este torneo..."
+                        className="w-full rounded-xl border border-primary/25 bg-background/80 py-2 pl-9 pr-4 text-xs font-medium focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-8 p-4 sm:p-6">
                 {/* Cabecera del Torneo Seleccionado */}
-                <div className="flex flex-col gap-4 rounded-3xl border border-border/80 bg-card/80 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                <div className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-card/90 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-xl font-extrabold sm:text-2xl">{currentTorneo.name}</h2>
                       <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
                         {currentTorneo.formato}
                       </Badge>
@@ -805,7 +833,8 @@ export default function Dashboard({ publicMode = false }) {
                     </CardContent>
                   </Card>
                 </div>
-              </div>
+                </div>
+              </section>
             )}
           </div>
         )}
